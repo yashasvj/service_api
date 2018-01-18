@@ -1,0 +1,7 @@
+Getting started:
+
+Add gem 'service_api' to your Gemfile
+
+$ bundle install
+$ rake service_api:install:migrations
+$ rake db:migrate

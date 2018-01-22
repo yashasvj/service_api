@@ -1,5 +1,6 @@
 module ServiceApi
   class ApplicationController < ActionController::Base
-    protect_from_forgery with: :exception
+  	include ActionController::HttpAuthentication::Basic::ControllerMethods
+    protect_from_forgery with: :null_session
   end
 end

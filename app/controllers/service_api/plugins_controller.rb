@@ -2,56 +2,73 @@ require_dependency "service_api/application_controller"
 
 module ServiceApi
   class PluginsController < ApplicationController
+    before_filter :authenticate
+    before_action :get_plugin_params, only: [:create, :get_versions, :set_versions]
 
   	def index
-  	  # To show all plugins and versions
+  	  render json: $redis.hgetall('plugin')
   	end
 
   	def create
-  	  software_id = params[:id].to_s
-  	  software_name = params[:name]
-  	  software_version = params[:version]
-  	  version = redis.hset software_id, software_name, software_version if software_id.present? && software_name.present? && software_version.present?
-  	  if version.present?
-  	  	render json: { name: software_name, version: software_version }, status: :ok
-  	  else
-  	  	render json: { error: 'Could not set new plugin!' }, status: 400
-  	  end
+      plugin = $redis.hget('plugin', @plugin_id)
+      if plugin.blank?
+        jsonobj = Hash.new
+        jsonobj[:name] = @software_name
+        jsonobj[:version] = @software_version
+        version = $redis.hset('plugin', @plugin_id, jsonobj.to_json) if @plugin_id.present? && @software_name.present? && @software_version.present?
+        if version
+          render json: $redis.hget('plugin', @plugin_id)
+        else
+          render json: { error: 'Could not set new plugin!' }, status: 400
+        end
+      else
+        render json: { error: 'Plugin with same ID already exists' }, status: 400
+      end
   	end
 
   	def get_versions
-  	  version = nil
-  	  software_id = params[:id].to_s
-  	  software_name = get_software_from_version(software_id)
-  	  version = redis.hget software_id, software_name if software_id.present? && software_name.present?
-  	  if version.present?
-  	  	render json: { name: software_name, version: version }, status: :ok
-  	  else
-  	  	render json: { error: 'Could not find plugin!' }, status: 400
-  	  end
+      plugin = $redis.hget('plugin', @plugin_id)
+      @version = JSON.parse plugin if plugin.present?
+      if @version.present?
+        render json: @version
+      else
+        render json: { error: "Could not find plugin with ID - #{@plugin_id}" }, status: 400
+      end
   	end
 
   	def set_versions
-  	  version = nil
-      software_id = params[:id].to_s
-      software_version = params[:version]
-  	  software_name = get_software_from_version(software_id)
-  	  version = redis.hset software_id, software_name, software_version if software_name.present? && software_version.present?
-  	  if version.present?
-  	  	render json: { name: software_name, version: software_version }, status: :ok
-  	  else
-  	  	render json: { error: 'Could not set plugin version!' }, status: 400
-  	  end
+      plugin = $redis.hget('plugin', @plugin_id)
+      unless plugin.blank?
+        $redis.hdel('plugin', @plugin_id)
+        plugin = JSON.parse plugin
+        plugin[:name] = @software_name
+        plugin[:version] = @software_version
+        version = $redis.hset('plugin', @plugin_id, plugin.to_json)
+        if version
+          render json: $redis.hget('plugin', @plugin_id)
+        else
+          render json: { error: 'Failed to set plugin version!' }, status: 400
+        end
+      else
+        render json: { error: "Could not find Plugin with ID - #{@plugin_id}" }
+      end
   	end
 
-  	private
+    protected
 
-  	def get_software_from_version(s_id)
-  	  case s_id
-	    when '1' then 'AutoCAD'
-	    when '2' then 'Revit'
-	  end
-  	end
+    def authenticate
+      authenticate_or_request_with_http_basic do |username, password| 
+         (username == $api_user_1[:email] && password == $api_user_1[:password]) || 
+         (username == $api_user_2[:email] && password == $api_user_2[:password])
+      end
+    end
+
+    def get_plugin_params
+      @plugin_id = params[:id].presence || params[:plugin_id]
+      @software_name = params[:name]
+      @software_version = params[:version]
+      @version = nil
+    end
 
   end
 end

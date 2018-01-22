@@ -20,6 +20,9 @@ gem 'puma', '~> 3.0'
 gem 'redis-objects'
 gem 'redis-namespace', '>=1.5.2'
 
+# Configuration
+gem 'config', '1.3.0'
+
 group :development, :test do
   # Call 'byebug' anywhere in the code to stop execution and get a debugger console
   gem 'byebug', platform: :mri
@@ -27,6 +30,7 @@ group :development, :test do
   # gem 'factory_girl_rails'
   # gem 'awesome_print'
   gem 'pry-rails'
+  gem 'rspec_api_documentation'
 end
 
 group :development do
